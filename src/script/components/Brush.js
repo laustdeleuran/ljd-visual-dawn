@@ -7,108 +7,64 @@ import paper from 'paper/dist/paper-core';
  * Paint brush stroke
  */
 export default class Brush {
-	constructor() {
+	constructor(x = 600, y = 600) {
 		this.color = new paper.Color(255, 255, 255);
 
 		// Set up PaperJS tool
-		this.tool = new paper.Tool({
-			maxDistance: 20
-		});
-		this.minSize = 5;
-		this.carryLength = 0;
+		this.tool = new paper.Tool();
+		this.length = 10;
 
-		// Event listeners
-		this.tool.onMouseDrag = (event) => this.onMouseDrag(event);
-		this.tool.onMouseUp = (event) => this.onMouseUp(event);
+		this.startX = x;
+		this.startY = y;
+
+		// Create path
+		this.path = this.createPath();
 	}
-	getPath (createPoint) {
+	createPath () {
 		if (!this.path) {
 			this.path = new paper.Path({
-				fillColor: 'white'
+				segments: [[this.startX + this.length, this.startY]],
+				fillColor: 'white',
+				strokeColor: 'white'
 			});
-			this.path.add(createPoint);
 		}
 		return this.path;
+	}
+	addPoint (point) {
+		if (this.path) {
+			let diff = this.path.lastSegment.point.subtract(point);
+			if (Math.abs(diff.x) > 5 || Math.abs(diff.y) > 5) {
+				let top = point.add(Math.random() * 2);
+				let bottom = point.subtract(Math.random() * 2);
+	
+				this.path.add(top);
+				this.path.insert(0, bottom);
+				this.path.smooth();
+			}
+		}
 	}
 	endPath (point) {
 		if (this.path) {
 			this.path.add(point);
-			this.path.closed = true;
 			this.path.smooth();
+			this.path.closed = true;
 
 			delete this.path;
+			delete this.count;
 		}
 	}
-	randomDrips(point){
-		var randomVector = new paper.Point((Math.random()-0.5)*60, (Math.random()-0.5)*60);
+	draw (event) {
+		if (this.path) {
+			this.count = this.count === undefined ? 0 : this.count+1;
+			this.length += (this.count)/200;
 
-		var circle = new paper.Path.Circle(point.add(randomVector), 30*Math.pow(Math.random(), 5));
-		circle.scale(Math.random()*0.5+0.5, Math.random()*0.5+0.5);
+			let angle = event ? event.time * 360 % 360 : 0;
 
-		paper.project.activeLayer.lastChild.fillColor = 'white';
-	}
-	onMouseDrag(event) {
-		if (event.delta.length > this.minSize) {
+			let nextPoint = this.path.lastSegment.point.clone();
+			nextPoint.angle = angle;
+			nextPoint.length = this.length;
 
-			let path = this.getPath(event.lastPoint);
-
-			let step = event.delta;
-			step.angle = step.angle + 90;
-
-			let stepPoint = step.normalize();
-			let stepReci = stepPoint.multiply(50).multiply(1 / step.length);
-
-			let top = event.middlePoint.add(stepReci);
-			let bottom = event.middlePoint.subtract(stepReci);
-
-			this.carryLength = this.carryLength + step.length;
-
-			if (this.carryLength > stepReci.length) {
-				path.add(top);
-				path.insert(0, bottom);
-				path.smooth();
-
-
-				if (stepReci.length > 5) { 
-
-					let frontDrip = new paper.Path({
-						fillColor: this.color
-					});
-
-					frontDrip.add(top);
-					frontDrip.add(bottom);
-					frontDrip.add(event.middlePoint.add(event.delta)); 
-
-					frontDrip.closed = true;
-					frontDrip.smooth();
-
-					frontDrip.firstCurve.segment2.handleOut = new paper.Point(0, 0).add(event.delta);
-					frontDrip.firstCurve.segment2.handleIn = new paper.Point(0, 0);
-					frontDrip.lastCurve.segment2.handleOut = new paper.Point(0, 0);
-					frontDrip.lastCurve.segment2.handleIn = new paper.Point(0, 0).add(event.delta);
-
-				}
-
-				this.carryLength = 0;
-			}
-
-			//make some random drips
-			var i = 0;
-
-			if (Math.random() < 0.05) {
-
-				var min = 1;
-				var max = 7;
-				var stop = Math.floor(Math.random() * (max - min + 1)) + min;
-
-				while (i < stop) {
-					this.randomDrips(event.lastPoint);
-					i++;
-				}
-			}
+			this.addPoint(nextPoint.add(this.startX, this.startY));
 		}
-	}
-	onMouseUp (event) {
-		this.endPath(event.point);
 	}
 }
