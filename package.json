@@ -52,6 +52,7 @@
     "gulp-util": "^3.0.7",
     "ljd-njord": "^0.3.2",
     "normalize.css": "^3.0.3",
+    "paper": "^0.9.25",
     "semver": "^5.1.0",
     "stringify": "^4.0.1",
     "vinyl-buffer": "^1.0.0",
